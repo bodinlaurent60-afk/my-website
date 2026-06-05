@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 10 15% 6%;
+    --foreground: 36 25% 90%;
+    --card: 250 20% 8%;
+    --card-foreground: 36 25% 90%;
+    --popover: 250 20% 8%;
+    --popover-foreground: 36 25% 90%;
+    --primary: 43 50% 55%;
+    --primary-foreground: 10 15% 6%;
+    --secondary: 260 25% 12%;
+    --secondary-foreground: 36 25% 85%;
+    --muted: 260 15% 14%;
+    --muted-foreground: 240 5% 55%;
+    --accent: 45 40% 35%;
+    --accent-foreground: 10 15% 6%;
+    --destructive: 0 70% 40%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 260 20% 18%;
+    --input: 260 20% 18%;
+    --ring: 43 50% 55%;
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Georgia', 'Noto Serif SC', 'Times New Roman', serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Import Noto Serif SC for Chinese */
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;600&display=swap');
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  ::selection {
+    background: rgba(212, 175, 55, 0.3);
+    color: #fff;
+  }
+}
+
+/* Tarot-specific animations and effects */
+.tarot-card {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.card-fan-container .tarot-card:hover {
+  z-index: 100 !important;
+}
+
+/* Smooth page transitions */
+section {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
