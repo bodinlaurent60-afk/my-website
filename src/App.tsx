@@ -60,7 +60,7 @@ const AppContent: React.FC = () => {
     setReadingText(t('loading'));
 
     try {
-      // Build card data for the AI API
+      // ── Build card data for the AI prompt ──
       const cardsPayload = drawnCards.map((dc, i) => {
         const pos = currentSpread?.positions[i];
         const posLabel = language === 'cn' ? pos?.labelCn : pos?.labelEn;
@@ -82,30 +82,80 @@ const AppContent: React.FC = () => {
         ? (language === 'cn' ? currentSpread.nameCn : currentSpread.nameEn)
         : '';
 
-      // Call the AI oracle backend
-      const response = await fetch('/api/oracle', {
+      // ── Build prompt text from cards ──
+      const cardLines = cardsPayload.map((c, i) => {
+        const pos = c.positionLabel || `Position ${i + 1}`;
+        const orientation = c.isReversed
+          ? (language === 'cn' ? '（逆位）' : ' (Reversed)')
+          : (language === 'cn' ? '（正位）' : ' (Upright)');
+        return `[${pos}] ${c.cardName}${orientation}\n   ${c.meaning}`;
+      }).join('\n\n');
+
+      const isCN = language === 'cn';
+
+      const systemPrompt = isCN
+        ? `你是一位经验丰富的塔罗牌占卜师，擅长用神秘而温暖的语调解读塔罗牌阵。你的风格特点：
+- 语言优美、富有诗意，善用隐喻和意象
+- 解读深刻但不晦涩，给人启发和力量
+- 每张牌的解读要结合它所在的位置含义
+- 最后给出一个整体的总结和温和的建议
+- 完全使用中文，不要出现英文`
+        : `You are an experienced tarot reader with a mystical yet warm tone. Your style:
+- Poetic, metaphorical, and evocative language
+- Profound but accessible insights that empower the reader
+- Interpret each card in context of its position
+- End with a gentle overall summary and advice
+- Reply entirely in English`;
+
+      const userPrompt = isCN
+        ? `请为我进行一次完整的塔罗牌解读。\n\n【占卜者的问题】${question || '(未提出具体问题，请做综合解读)'}\n\n【使用的牌阵】${spreadName || '未知'}\n\n【抽出的牌面】\n${cardLines}\n\n请为每一张牌详细解读其在此位置的含义，最后给出整体的综合分析和建议。格式清晰美观。`
+        : `Please provide a complete tarot card reading.\n\n[Question] ${question || '(No specific question — give a general reading)'}\n\n[Spread Used] ${spreadName || 'Unknown'}\n\n[Cards Drawn]\n${cardLines}\n\nPlease interpret each card's meaning in its position in detail, then provide an overall synthesis and guidance. Format beautifully.`;
+
+      // ── Call DashScope API directly from browser (Plan C: 前端直连) ──
+      const DASHSCOPE_API_KEY = 'sk-e1b8b1dcccdc4c38a1c9bed3ef52641b';
+      const API_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+      const MODEL = 'qwen-plus'; // No timeout limit — use better model
+
+      console.log('[Oracle] Direct DashScope call:', cardsPayload.length, 'cards, lang=' + language);
+
+      const response = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${DASHSCOPE_API_KEY}`,
+        },
         body: JSON.stringify({
-          question,
-          spreadName,
-          language,
-          cards: cardsPayload,
+          model: MODEL,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          temperature: 0.85,
+          top_p: 0.9,
+          max_tokens: 2048, // Restored — no more Vercel 10s timeout
         }),
       });
 
       if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || `Server error (${response.status})`);
+        const errBody = await response.text().catch(() => '');
+        throw new Error(`DashScope error (${response.status}): ${errBody}`);
       }
 
-      const result = await response.json();
+      const data = await response.json();
 
-      if (!result.success || !result.reading) {
-        throw new Error(result.error || 'No reading returned');
+      if (data.error) {
+        throw new Error(data.error.message || 'DashScope API error');
       }
 
-      setReadingText(result.reading);
+      const readingTextResult = data.choices?.[0]?.message?.content || '';
+
+      if (!readingTextResult || readingTextResult.trim().length < 10) {
+        throw new Error('Empty or too short AI response');
+      }
+
+      console.log('[Oracle] Response length:', readingTextResult.length, 'chars');
+      setReadingText(readingTextResult.trim());
+
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
       console.error('[Oracle] Error:', errMsg);
