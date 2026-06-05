@@ -3,7 +3,7 @@
 // Pure ESM — uses Node.js native fetch (Vercel Runtime: Node 18+)
 
 const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY || 'sk-e1b8b1dcccdc4c38a1c9bed3ef52641b';
-const MODEL = 'qwen-plus';
+const MODEL = 'qwen-turbo';
 const API_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
 
 /**
@@ -21,7 +21,7 @@ async function callQwen(messages, options = {}) {
       messages,
       temperature: options.temperature || 0.85,
       top_p: options.top_p || 0.9,
-      max_tokens: options.maxTokens || 2048,
+      max_tokens: options.maxTokens || 1500,
     }),
     // Vercel free tier: max 10s timeout for Hobby plan, 60s for Pro
     signal: AbortSignal.timeout(options.timeout || 25000),
